@@ -55,6 +55,7 @@ conn.commit()
 client_id = st.secrets["GOOGLE_CLIENT_ID"]
 client_secret = st.secrets["GOOGLE_CLIENT_SECRET"]
 redirect_uri = st.secrets["REDIRECT_URI"]
+st.write("🔁 Redirect URI being used:", redirect_uri)
 if not redirect_uri:
     st.stop()
 
