@@ -52,9 +52,9 @@ cursor.execute("""
 conn.commit()
 
 # ------------------------ Google OAuth Setup ------------------------
-client_id = os.getenv("GOOGLE_CLIENT_ID")
-client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
-redirect_uri = os.getenv("REDIRECT_URI")
+client_id = st.secrets("GOOGLE_CLIENT_ID")
+client_secret = st.secrets("GOOGLE_CLIENT_SECRET")
+redirect_uri = st.secrets("REDIRECT_URI")
 if not redirect_uri:
     st.stop()
 
