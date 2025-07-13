@@ -161,6 +161,8 @@ def referral_page():
     st.markdown("- [Practo - Mental Health](https://www.practo.com/consult)")
 
 # ------------------------ Main App ------------------------
+st.set_page_config(page_title="AIVA - Mental Wellness Assistant", page_icon="🧠")
+
 def main():
     
 
