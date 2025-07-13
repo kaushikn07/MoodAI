@@ -4,3 +4,4 @@ textblob
 emoji
 openai>=1.3.0
 python-dotenv
+streamlit-oauth

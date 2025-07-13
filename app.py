@@ -1,61 +1,210 @@
+# AI Mental Wellness Assistant - Google OAuth Version
+
 import streamlit as st
 from streamlit_option_menu import option_menu
-from openai import OpenAI
+import sqlite3
+from datetime import datetime
 import os
+from streamlit_oauth import OAuth2Component
+from dotenv import load_dotenv
+import requests
+from collections import Counter
+import pandas as pd
 
-# Load from .env if local
+# ------------------------ Environment Setup ------------------------
 if os.path.exists(".env"):
-    from dotenv import load_dotenv
     load_dotenv()
 
-# Get API key securely
-API_KEY = st.secrets["openai"]["api_key"] if "openai" in st.secrets else os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=API_KEY)
+# ------------------------ Together.ai Model Config ------------------------
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
+MODEL_NAME = "deepseek-ai/DeepSeek-V3"
+headers = {
+    "Authorization": f"Bearer {TOGETHER_API_KEY}",
+    "Content-Type": "application/json"
+}
+API_URL = "https://api.together.xyz/v1/chat/completions"
 
-# -------------- Sidebar Navigation --------------
-with st.sidebar:
-    selected = option_menu(
-        "Navigation",
-        ["Welcome", "Chatbot"],
-        icons=["house", "chat"],
-        default_index=1,
+def generate_response(messages):
+    payload = {
+        "model": MODEL_NAME,
+        "messages": messages,
+        "max_tokens": 200,
+        "temperature": 0.7
+    }
+    response = requests.post(API_URL, headers=headers, json=payload)
+    if response.status_code == 200:
+        return response.json()["choices"][0]["message"]["content"]
+    else:
+        return "⚠️ Sorry, the assistant is currently unavailable."
+
+# ------------------------ SQLite Init ------------------------
+conn = sqlite3.connect("mood_logs.db", check_same_thread=False)
+cursor = conn.cursor()
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS moods (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT,
+        mood TEXT,
+        note TEXT,
+        timestamp TEXT
     )
+""")
+conn.commit()
 
-# -------------- Chatbot Page --------------
-if selected == "Chatbot":
-    st.title("💬 Talk to Your Wellness Assistant")
+# ------------------------ Google OAuth Setup ------------------------
+client_id = os.getenv("GOOGLE_CLIENT_ID")
+client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+redirect_uri = os.getenv("REDIRECT_URI", "http://localhost:8501")
 
+oauth = OAuth2Component(
+    client_id=client_id,
+    client_secret=client_secret,
+    authorize_endpoint="https://accounts.google.com/o/oauth2/v2/auth",
+    token_endpoint="https://oauth2.googleapis.com/token"
+)
+
+# ------------------------ Pages ------------------------
+def chatbot_page():
+    st.title("💬 Chat with AIVA")
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = [
-            {"role": "system", "content": "You are a kind, supportive AI therapist named AIVA. Keep responses short, warm, and reflective. Offer help if needed."}
+            {"role": "system", "content": "You are a supportive AI wellness therapist named AIVA."}
         ]
 
-    # Display chat
     for msg in st.session_state.chat_history[1:]:
-        if msg["role"] == "user":
-            st.markdown(f"**You:** {msg['content']}")
-        else:
-            st.markdown(f"**AIVA:** {msg['content']}")
+        st.markdown(f"**{'You' if msg['role']=='user' else 'AIVA'}:** {msg['content']}")
 
-    # Form input
     with st.form("chat_form", clear_on_submit=True):
         user_input = st.text_input("You:")
         submitted = st.form_submit_button("Send")
 
     if submitted and user_input:
         st.session_state.chat_history.append({"role": "user", "content": user_input})
-
         with st.spinner("AIVA is thinking..."):
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=st.session_state.chat_history,
-                temperature=0.7,
-            )
-        reply = response.choices[0].message.content
+            reply = generate_response(st.session_state.chat_history)
         st.session_state.chat_history.append({"role": "assistant", "content": reply})
         st.rerun()
 
-# -------------- Welcome Page --------------
-elif selected == "Welcome":
-    st.title("🧠 AI Mental Wellness Assistant")
-    st.markdown("Welcome to your personal mental wellness chatbot powered by ChatGPT.")
+def mood_checkin_page():
+    st.title("😊 Mood Check-In")
+    mood = st.radio("How are you feeling?", ["happy", "calm", "neutral", "worried", "sad", "angry"])
+    note = st.text_area("Want to elaborate?")
+    if st.button("Save Mood"):
+        cursor.execute("INSERT INTO moods (email, mood, note, timestamp) VALUES (?, ?, ?, ?)",
+                       (st.session_state.user_email, mood, note, str(datetime.now())))
+        conn.commit()
+        st.success("Mood saved")
+
+    st.subheader("Your Past Mood Entries")
+    cursor.execute("SELECT mood, note, timestamp FROM moods WHERE email = ? ORDER BY timestamp DESC", (st.session_state.user_email,))
+    entries = cursor.fetchall()
+
+    emoji_map = {
+        "happy": "😊",
+        "calm": "😌",
+        "neutral": "😐",
+        "worried": "😟",
+        "sad": "😢",
+        "angry": "😠"
+    }
+
+    for mood, note, timestamp in entries:
+        dt = datetime.strptime(timestamp[:19], "%Y-%m-%d %H:%M:%S")
+        formatted_time = dt.strftime("%d %B %Y, %I:%M %p").replace(" 0", " ")
+        mood_emoji = emoji_map.get(mood, "")
+        st.markdown(f"**{formatted_time}** - {mood_emoji} {mood.capitalize()}  ")
+        if note:
+            st.markdown(f"> {note}")
+
+    st.subheader("📈 Mood Trend")
+    mood_counts = Counter([entry[0] for entry in entries])
+    if mood_counts:
+        df = pd.DataFrame.from_dict(mood_counts, orient="index", columns=["Count"]).reset_index()
+        df.columns = ["Mood", "Count"]
+        st.bar_chart(df.set_index("Mood"))
+
+def assessment_page():
+    st.title("📝 PHQ-9 Assessment (Free Text)")
+    PHQ9 = [
+        "Little interest or pleasure in doing things",
+        "Feeling down, depressed, or hopeless",
+        "Trouble sleeping",
+        "Feeling tired or low energy",
+        "Poor appetite or overeating",
+        "Feeling bad about yourself",
+        "Trouble concentrating",
+        "Restlessness or slowness",
+        "Thoughts of self-harm"
+    ]
+    answers = []
+    for i, q in enumerate(PHQ9):
+        ans = st.text_area(f"Q{i+1}: {q}")
+        answers.append(f"Q{i+1}: {q}\nAnswer: {ans}\n")
+
+    if st.button("Analyze My Answers"):
+        full_prompt = "You are a mental health expert. Based on the following answers to PHQ-9, summarize the user's state of mind and give gentle, actionable advice.\n\n" + "\n".join(answers)
+        with st.spinner("Analyzing your answers..."):
+            reply = generate_response([
+                {"role": "system", "content": "You are a compassionate mental health advisor."},
+                {"role": "user", "content": full_prompt}
+            ])
+        st.markdown("### 🧠 Insight from AIVA")
+        st.write(reply)
+
+def referral_page():
+    st.title("📞 Support & Referrals")
+    st.markdown("- **iCall**: 9152987821")
+    st.markdown("- **AASRA**: 91-9820466726")
+    st.markdown("- [Tele-MANAS](https://telemanas.mohfw.gov.in/)")
+    st.markdown("- [Practo - Mental Health](https://www.practo.com/consult)")
+
+# ------------------------ Main App ------------------------
+def main():
+    st.sidebar.title("Google Login")
+
+    if "user_email" not in st.session_state:
+        token = oauth.authorize_button(
+            "Login with Google",
+            redirect_uri=redirect_uri,
+            scope="https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
+        )
+
+        if token:
+            headers_ = {"Authorization": f"Bearer {token['token']['access_token']}"}
+            userinfo = requests.get("https://www.googleapis.com/oauth2/v1/userinfo", headers=headers_).json()
+            if userinfo and userinfo.get("email"):
+                st.session_state.user_email = userinfo["email"]
+                st.rerun()
+            else:
+                st.error("Could not retrieve user info. Try again.")
+        else:
+            st.info("Please log in to access the app")
+            return
+
+    st.success(f"✅ Logged in as {st.session_state.user_email}")
+    with st.sidebar:
+        if st.button("Logout"):
+            del st.session_state.user_email
+            st.rerun()
+
+        selected = option_menu(
+            "Navigation",
+            ["Welcome", "Chatbot", "Mood Check-In", "Assessment", "Referrals"],
+            icons=["house", "chat", "emoji-smile", "check2-square", "telephone"],
+            default_index=0
+        )
+
+    if selected == "Welcome":
+        st.title("👋 Welcome to the AI Mental Wellness Assistant")
+        st.markdown("This app supports your emotional wellbeing. Use the navigation menu to explore.")
+    elif selected == "Chatbot":
+        chatbot_page()
+    elif selected == "Mood Check-In":
+        mood_checkin_page()
+    elif selected == "Assessment":
+        assessment_page()
+    elif selected == "Referrals":
+        referral_page()
+
+if __name__ == "__main__":
+    main()
