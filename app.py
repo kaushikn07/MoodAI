@@ -160,14 +160,23 @@ def referral_page():
 
 # ------------------------ Main App ------------------------
 def main():
-    st.sidebar.title("Google Login")
+    
 
     if "user_email" not in st.session_state:
-        token = oauth.authorize_button(
-            "Login with Google",
-            redirect_uri=redirect_uri,
-            scope="https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
-        )
+        st.markdown("""
+            <div style='text-align: center; margin-top: 20%;'>
+                <h2>🧠 Welcome to AIVA</h2>
+                <p>Please log in with Google to continue.</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            token = oauth.authorize_button(
+                "🔐 Login with Google",
+                redirect_uri=redirect_uri,
+                scope="https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
+            )
 
         if token:
             headers_ = {"Authorization": f"Bearer {token['token']['access_token']}"}
@@ -178,7 +187,6 @@ def main():
             else:
                 st.error("Could not retrieve user info. Try again.")
         else:
-            st.info("Please log in to access the app")
             return
 
     st.success(f"✅ Logged in as {st.session_state.user_email}")
