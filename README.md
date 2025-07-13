@@ -86,3 +86,7 @@ MIT License — feel free to fork, modify, and use for non-commercial purposes.
 ## 💡 Inspiration
 
 This project was built to make mental health tools more accessible, customizable, and respectful of user privacy. ✨
+
+## Check it out here !
+
+[MoodAI](https://moodcheckai.streamlit.app/)
