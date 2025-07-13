@@ -16,7 +16,7 @@ if os.path.exists(".env"):
     load_dotenv()
 
 # ------------------------ Together.ai Model Config ------------------------
-TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
+TOGETHER_API_KEY = st.secrets("TOGETHER_API_KEY")
 MODEL_NAME = "deepseek-ai/DeepSeek-V3"
 headers = {
     "Authorization": f"Bearer {TOGETHER_API_KEY}",
