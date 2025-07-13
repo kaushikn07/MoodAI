@@ -89,4 +89,4 @@ This project was built to make mental health tools more accessible, customizable
 
 ## Check it out here !
 
-[MoodAI](https://moodcheckai.streamlit.app/)
+[AIVA](https://moodcheckai.streamlit.app/)
