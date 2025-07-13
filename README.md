@@ -7,7 +7,7 @@ AIVA is a Streamlit-based mental health assistant that enables users to check in
 ## 🌟 Features
 
 - 🔐 **Google OAuth Login** for secure access
-- 💬 **Chatbot (AIVA)** powered by Together.ai's `DeepSeek-V3`
+- 💬 **Chatbot (AIVA)** powered by `DeepSeek-V3`
 - 😊 **Mood Journal** with emoji-based check-ins and personal notes
 - 📈 **Mood Trends** with bar charts from historical entries
 - 📝 **Free-text PHQ-9 Assessment** analyzed by an open-source LLM
