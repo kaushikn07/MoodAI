@@ -16,7 +16,7 @@ if os.path.exists(".env"):
     load_dotenv()
 
 # ------------------------ Together.ai Model Config ------------------------
-TOGETHER_API_KEY = st.secrets("TOGETHER_API_KEY")
+TOGETHER_API_KEY = st.secrets["TOGETHER_API_KEY"]
 MODEL_NAME = "deepseek-ai/DeepSeek-V3"
 headers = {
     "Authorization": f"Bearer {TOGETHER_API_KEY}",
@@ -52,9 +52,9 @@ cursor.execute("""
 conn.commit()
 
 # ------------------------ Google OAuth Setup ------------------------
-client_id = st.secrets("GOOGLE_CLIENT_ID")
-client_secret = st.secrets("GOOGLE_CLIENT_SECRET")
-redirect_uri = st.secrets("REDIRECT_URI")
+client_id = st.secrets["GOOGLE_CLIENT_ID"]
+client_secret = st.secrets["GOOGLE_CLIENT_SECRET"]
+redirect_uri = st.secrets["REDIRECT_URI"]
 if not redirect_uri:
     st.stop()
 
